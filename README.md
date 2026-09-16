@@ -68,6 +68,19 @@ handle /api/deploy* {
 - `branch` defaults to `refs/heads/main`.
 - Steps run in order with `repo_dir` as the working directory.
 
+## Notifications (optional)
+
+Each hook can post deploy start / success / failure to Discord:
+
+```json
+"notify": {"discord_webhook_file": "/home/ubuntu/.deploy-discord-webhook"}
+```
+
+Create a webhook in Discord (channel settings → Integrations → Webhooks),
+save its URL to that file (`chmod 600`), and restart the listener. The file
+is read at deploy time, so rotating the URL needs no restart. If the file is
+missing or empty, notifications are silently skipped — deploys still run.
+
 ## Logs
 
 `~/deploy-hooks.log` — every webhook event and every deploy step with its exit

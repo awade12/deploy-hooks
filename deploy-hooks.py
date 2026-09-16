@@ -21,6 +21,8 @@ import os
 import re
 import subprocess
 import threading
+import time
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -67,14 +69,46 @@ def run(hook: str, repo_dir: str, cmd: list[str]) -> bool:
     return p.returncode == 0
 
 
-def deploy(hook: str, cfg: dict) -> None:
+def notify(hook: str, cfg: dict, message: str) -> None:
+    """Post a message to the hook's Discord webhook, if configured.
+
+    The webhook URL lives in a file on the server (never in the repo).
+    Failures are logged, never fatal to a deploy.
+    """
+    dest = (cfg.get("notify") or {}).get("discord_webhook_file")
+    if not dest:
+        return
+    try:
+        with open(dest) as f:
+            url = f.read().strip()
+        if not url:
+            return
+        data = json.dumps({"content": message}).encode()
+        req = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"}
+        )
+        urllib.request.urlopen(req, timeout=15).read()
+    except Exception as e:  # noqa: BLE001 - notification must not break deploys
+        log(hook, f"notify failed: {e}")
+
+
+def deploy(hook: str, cfg: dict, sha: str) -> None:
+    started = time.time()
     log(hook, "DEPLOY start")
+    notify(hook, cfg, f"\U0001f680 Deploying **{hook}** (`{sha}`)...")
     repo_dir = cfg["repo_dir"]
     for cmd in cfg["steps"]:
         if not run(hook, repo_dir, cmd):
             log(hook, "DEPLOY FAILED - previous version still running")
+            notify(
+                hook,
+                cfg,
+                f"\u274c **{hook}** deploy FAILED at `{' '.join(cmd)}`",
+            )
             return
+    secs = int(time.time() - started)
     log(hook, "DEPLOY ok")
+    notify(hook, cfg, f"\u2705 **{hook}** deployed in {secs}s")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -150,7 +184,7 @@ class Handler(BaseHTTPRequestHandler):
 
         sha = (payload.get("after") or "")[:8]
         log(name, f"webhook push to {branch} ({sha}) - deploying")
-        threading.Thread(target=deploy, args=(name, cfg), daemon=True).start()
+        threading.Thread(target=deploy, args=(name, cfg, sha), daemon=True).start()
         self._send(202, "deploying")
 
     def do_GET(self) -> None:  # noqa: N802
