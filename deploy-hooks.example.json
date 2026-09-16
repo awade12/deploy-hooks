@@ -1,0 +1,1 @@
+{"my-site":{"branch":"refs/heads/main","repo_dir":"/home/ubuntu/my-site","secret_file":"/home/ubuntu/.my-site-webhook-secret","steps":[["git","fetch","origin"],["git","reset","--hard","origin/main"],["npm","ci","--no-audit","--no-fund"],["npm","run","build"],["sudo","-n","/bin/systemctl","restart","my-site"]]}}

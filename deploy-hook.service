@@ -1,0 +1,13 @@
+[Unit]
+Description=Multi-repo GitHub auto-deploy webhook listener
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/bin/python3 /home/ubuntu/deploy-hooks.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
