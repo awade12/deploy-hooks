@@ -85,7 +85,15 @@ def notify(hook: str, cfg: dict, message: str) -> None:
             return
         data = json.dumps({"content": message}).encode()
         req = urllib.request.Request(
-            url, data=data, headers={"Content-Type": "application/json"}
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                # Discord's edge (Cloudflare) rejects the default
+                # Python-urllib UA with a 1010; use a browser-like one.
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+            },
         )
         urllib.request.urlopen(req, timeout=15).read()
     except Exception as e:  # noqa: BLE001 - notification must not break deploys
