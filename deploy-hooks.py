@@ -69,6 +69,14 @@ def run(hook: str, repo_dir: str, cmd: list[str]) -> bool:
     return p.returncode == 0
 
 
+def _step_label(cmd: list[str]) -> str:
+    # Public-safe label: never leak absolute paths or sudo invocations
+    # (deploy notices may go to a public channel).
+    if cmd[0] == "sudo":
+        return "restart service"
+    return " ".join(cmd[:3])
+
+
 def notify(hook: str, cfg: dict, message: str) -> None:
     """Post a message to the hook's Discord webhook, if configured.
 
@@ -111,7 +119,7 @@ def deploy(hook: str, cfg: dict, sha: str) -> None:
             notify(
                 hook,
                 cfg,
-                f"\u274c **{hook}** deploy FAILED at `{' '.join(cmd)}`",
+                f"\u274c **{hook}** deploy FAILED at `{_step_label(cmd)}`",
             )
             return
     secs = int(time.time() - started)
